@@ -1,0 +1,230 @@
+// 설계 근거는 docs/architecture.md §데이터 모델 참조.
+// Prisma 7: 연결 URL 은 여기가 아니라 prisma.config.ts 에 있습니다.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+}
+
+enum AccountStatus {
+  DRAFT
+  CONNECTED
+  ERROR
+}
+
+enum OnboardingStatus {
+  REQUESTED
+  INVITED
+  AUTHORIZING
+  CONNECTED
+  ERROR
+}
+
+enum ConversationState {
+  WAITING_USER_MESSAGE
+  USER_REPLIED
+  FORM_SENT
+}
+
+enum EventType {
+  COMMENT_RECEIVED
+  COMMENT_SKIPPED
+  PRIVATE_REPLY_SENT
+  USER_REPLIED
+  FOLLOW_UP_SENT
+  FAILED
+}
+
+enum SkipReason {
+  SELF_COMMENT
+  NO_KEYWORD_MATCH
+  DUPLICATE
+  CAMPAIGN_DISABLED
+  ECHO
+  NO_TEXT
+  ACCOUNT_MISMATCH
+  NOT_FOLLOWER // 팔로워 게이트가 켜져 있고 비팔로워로 확인됨
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String?     @unique
+  passwordHash String?
+  status       UserStatus  @default(PENDING) // 운영자가 수동 승인
+  igAccounts   IgAccount[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model OnboardingRequest {
+  id                String           @id @default(cuid())
+  instagramUsername String
+  status            OnboardingStatus @default(REQUESTED)
+  errorCode         String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  oauthStates       OAuthState[]
+
+  @@index([status, createdAt])
+}
+
+model OAuthState {
+  id          String            @id // random opaque state, never a token
+  requestId   String
+  request     OnboardingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  browserHash String
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@index([expiresAt])
+}
+
+model IgAccount {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  igUserId String  @unique // Meta webhook 의 entry[].id
+  username String?
+  slug     String  @unique // webhook 경로 /webhook/:slug
+
+  // AES-256-GCM 암호문. 평문은 어디에도 저장하지 않습니다.
+  accessTokenEnc String
+  appSecretEnc   String
+  // 드물게 앱 구성에 따라 이 계정 서명 키가 appSecretEnc 가 아니라 상위 Meta App
+  // Secret 일 수 있다 (meta-api.md #7). 계정별 값이라 여기 둔다 — 플랫폼
+  // 전역 값일 수 없다. 각 고객이 자기 Meta 앱을 갖는 멀티테넌트 구조이기 때문.
+  // 없으면(대부분) appSecretEnc 만으로 검증한다.
+  parentAppSecretEnc String?
+  verifyToken        String
+
+  status         AccountStatus @default(DRAFT)
+  subscribedAt   DateTime? // subscribed_apps 호출 성공 시각
+  tokenExpiresAt DateTime? // 60일 만료 경고용
+  lastCheckedAt  DateTime?
+
+  // 캠페인에 문구가 없을 때의 폴백 (3단 캐스케이드 중간 단계)
+  defaultPrivateReplyText String?
+  defaultFollowUpText     String?
+
+  // DM 발송 후 그 댓글에 공개로 다는 대댓글. DM 은 상대의 "요청" 탭으로 들어가서
+  // 받은 줄 모르는 경우가 많아 "확인해보세요" 신호가 필요합니다.
+  // null 이면 대댓글을 달지 않습니다 — 설정하지 않은 사용자의 동작은 그대로입니다.
+  defaultCommentReplyText String?
+
+  // 팔로워 게이트. **null 이면 게이트가 없습니다** — 비팔로워도 양식을 받습니다(기본).
+  // 값을 넣으면 비팔로워에게 양식 대신 이 문구가 나갑니다. 판단 불가(null)일 때는
+  // 막지 않습니다 — 조회가 한 번 실패했다고 정상 사용자를 막는 쪽이 훨씬 나쁩니다.
+  // 제품 결정의 근거는 docs/why.md §팔로워 게이트 참고.
+  nonFollowerText String?
+
+  campaigns     Campaign[]
+  conversations Conversation[]
+  sentReplies   SentReply[]
+  events        Event[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// UI 에서는 "자동 DM" 이라고 부릅니다 (docs/why.md 원칙 1)
+model Campaign {
+  id          String    @id @default(cuid())
+  igAccountId String
+  igAccount   IgAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+
+  mediaId      String
+  permalink    String
+  thumbnailUrl String?
+  caption      String? // 목록에서 어느 글인지 알아보게
+  label        String?
+
+  triggerKeywords  String[] @default([]) // 비어 있으면 모든 댓글
+  privateReplyText String? // null 이면 계정 기본값
+  followUpText     String // 사용자가 입력하는 "보낼 DM"
+  enabled          Boolean  @default(true)
+
+  events Event[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([igAccountId, mediaId])
+}
+
+model Conversation {
+  id          String    @id @default(cuid())
+  igAccountId String
+  igAccount   IgAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+  igsid       String
+
+  state          ConversationState
+  lastCommentId  String?
+  lastMediaId    String? // ← 게시물별 문구가 성립하는 이유
+  lastCampaignId String?
+
+  // 팔로워 여부 캐시. 이 행이 (계정, 사람) 당 하나이므로 별도 KV 저장소가 필요 없습니다.
+  // is_user_follow_business 는 대화 성립 후에만 조회되므로(meta-api.md §1-13) 댓글
+  // 단계에서는 이 캐시가 유일한 근거입니다. followerCheckedAt 이 TTL 이고, 만료는
+  // 배치가 아니라 조회 시점의 비교로 처리합니다 — 팔로우는 언제든 끊길 수 있습니다.
+  isFollower        Boolean?
+  followerCheckedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([igAccountId, igsid]) // 조건부 UPDATE 의 키
+}
+
+/// Private Reply 멱등성 마커. 행의 존재 자체가 "이미 보냄" 을 뜻합니다.
+///
+/// 키는 **(계정, 사람, 게시물)** 입니다 — 댓글 단위가 아닙니다. 같은 사람이 같은 글에
+/// 댓글을 여러 번 달아도 DM 은 한 번만 나가야 하고("한 게시글 = 한 자동 DM", why.md),
+/// 다른 글에 달면 그 글의 문구로 다시 나가야 하기 때문입니다.
+/// commentId 로 잡으면 첫째가 깨지고, igsid 로만 잡으면 둘째가 깨집니다.
+model SentReply {
+  igAccountId String
+  igAccount   IgAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+  igsid       String
+  mediaId     String
+  /// 키가 아닙니다. 어느 댓글이 발동시켰는지 추적용.
+  commentId   String
+  createdAt   DateTime  @default(now())
+
+  @@id([igAccountId, igsid, mediaId])
+}
+
+/// 활동 피드 + 퍼널 분석의 원천. 기록하지 않은 과거는 복원되지 않습니다.
+model Event {
+  id          String    @id @default(cuid())
+  igAccountId String
+  igAccount   IgAccount @relation(fields: [igAccountId], references: [id], onDelete: Cascade)
+
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  mediaId    String? // 비정규화 — 캠페인을 지워도 통계가 남습니다
+
+  igsid    String?
+  username String? // 본문은 저장하지 않습니다
+
+  type       EventType
+  skipReason SkipReason? // "왜 DM 이 안 갔지?" 에 답하는 열
+  errorCode  String?
+  latencyMs  Int?
+  isFollower Boolean? // Phase 3. 반응 시점 값을 박제합니다
+
+  createdAt DateTime @default(now())
+
+  @@index([igAccountId, createdAt]) // 활동 피드
+  @@index([igAccountId, mediaId, type]) // 퍼널 GROUP BY
+}
