@@ -30,6 +30,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(204)
   logout(@Req() request: Request, @Res() response: Response) {
+    response.setHeader('Cache-Control', 'no-store');
     assertSameOrigin(request);
     response.clearCookie(SESSION_COOKIE, { path: '/' }).status(204).send();
   }

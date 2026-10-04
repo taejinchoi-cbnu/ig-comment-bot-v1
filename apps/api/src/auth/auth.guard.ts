@@ -31,7 +31,9 @@ export class AuthGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const http = context.switchToHttp();
+    http.getResponse<{ setHeader(name: string, value: string): void }>().setHeader('Cache-Control', 'no-store');
+    const request = http.getRequest<AuthenticatedRequest>();
     const bearer = bearerToken(request.headers.authorization);
     const token = bearer ?? readCookie(request.headers.cookie, SESSION_COOKIE);
     if (!token) throw new UnauthorizedException('로그인이 필요합니다');

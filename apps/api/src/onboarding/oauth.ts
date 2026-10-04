@@ -21,23 +21,37 @@ export function safeEqual(a: string, b: string): boolean {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
+export type OAuthIntent = { purpose: 'CONNECT'; requestId: string } | { purpose: 'LOGIN'; requestId: null };
+
 export async function startOAuth(db: OAuthDb, requestId: string, config = oauthConfig()) {
   const request = await db.onboardingRequest.findUnique({ where: { id: requestId } });
   if (request?.status !== 'INVITED') return { error: 'not_invited' as OAuthError };
+  return createOAuthState(db, { purpose: 'CONNECT', requestId }, config);
+}
+
+export function startLoginOAuth(db: OAuthDb, config = oauthConfig()) {
+  return createOAuthState(db, { purpose: 'LOGIN', requestId: null }, config);
+}
+
+async function createOAuthState(db: OAuthDb, intent: OAuthIntent, config: ReturnType<typeof oauthConfig>) {
   const state = randomBytes(32).toString('base64url');
   const browser = randomBytes(32).toString('base64url');
-  await db.oAuthState.create({ data: { id: state, requestId, browserHash: hash(browser), expiresAt: new Date(Date.now() + OAUTH_TTL_MS) } });
+  await db.oAuthState.create({ data: { id: state, ...intent, browserHash: hash(browser), expiresAt: new Date(Date.now() + OAUTH_TTL_MS) } });
   const url = new URL('https://www.instagram.com/oauth/authorize');
   url.search = new URLSearchParams({ client_id: config.appId, redirect_uri: config.redirectUri, response_type: 'code', scope: OAUTH_SCOPES.join(','), state }).toString();
   return { url: url.toString(), browser };
 }
 
-export async function consumeOAuthState(db: OAuthDb, state: string | undefined, browser: string | undefined) {
+export async function consumeOAuthState(db: OAuthDb, state: string | undefined, browser: string | undefined): Promise<OAuthIntent | null> {
   if (!state || !browser || !/^[A-Za-z0-9_-]{43}$/.test(state)) return null;
   const row = await db.oAuthState.findUnique({ where: { id: state } });
   if (!row || row.expiresAt <= new Date() || row.consumedAt || !safeEqual(row.browserHash, hash(browser))) return null;
+  if (row.purpose === 'CONNECT' ? !row.requestId : row.purpose !== 'LOGIN' || row.requestId !== null) return null;
   const updated = await db.oAuthState.updateMany({ where: { id: state, consumedAt: null, expiresAt: { gt: new Date() } }, data: { consumedAt: new Date() } });
-  return updated.count === 1 ? row.requestId : null;
+  if (updated.count !== 1) return null;
+  return row.purpose === 'CONNECT'
+    ? { purpose: 'CONNECT', requestId: row.requestId! }
+    : { purpose: 'LOGIN', requestId: null };
 }
 
 export async function exchangeCode(code: string, config = oauthConfig(), fetchImpl: typeof fetch = fetch) {

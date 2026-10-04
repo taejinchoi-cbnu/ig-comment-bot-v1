@@ -94,3 +94,15 @@ test('틀린 비밀번호는 사용자 존재 여부와 무관하게 Unauthorize
   const { auth } = serviceFor();
   await assert.rejects(auth.login({ email: 'missing@example.com', password: 'password123' }), UnauthorizedException);
 });
+
+
+test('Instagram session is valid for seven days and expired sessions are rejected', async () => {
+  const { auth } = serviceFor([user({ status: 'ACTIVE' })]);
+  const jwt = new JwtService({ secret: 'test-secret-at-least-32-bytes-long' });
+  const session = await auth.issueInstagramSession('user_1', 'account_1');
+  const claims = jwt.decode<{ exp: number; iat: number; kind: string }>(session);
+  assert.equal(claims.exp - claims.iat, 7 * 24 * 60 * 60);
+  assert.equal(claims.kind, 'instagram_session');
+  const expired = await jwt.signAsync({ sub: 'user_1', igAccountId: 'account_1', kind: 'instagram_session' }, { expiresIn: -1 });
+  await assert.rejects(auth.authenticate(expired, true), UnauthorizedException);
+});

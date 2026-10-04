@@ -77,10 +77,16 @@ model OnboardingRequest {
   @@index([status, createdAt])
 }
 
+enum OAuthPurpose {
+  CONNECT
+  LOGIN
+}
+
 model OAuthState {
   id          String            @id // random opaque state, never a token
-  requestId   String
-  request     OnboardingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  purpose     OAuthPurpose      @default(CONNECT)
+  requestId   String?
+  request     OnboardingRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
   browserHash String
   expiresAt   DateTime
   consumedAt  DateTime?
