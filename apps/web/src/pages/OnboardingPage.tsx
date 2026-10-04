@@ -61,7 +61,7 @@ export function OnboardingPage() {
   const requestId = localStorage.getItem('onboardingRequestId');
   const request = useQuery({
     queryKey: ['onboarding-request', requestId],
-    queryFn: () => getOnboardingRequest(requestId!),
+    queryFn: ({ signal }) => getOnboardingRequest(requestId!, signal),
     enabled: Boolean(requestId),
     refetchInterval: (query) => ['REQUESTED', 'AUTHORIZING'].includes(query.state.data?.status ?? '') ? 10_000 : false,
   });
@@ -82,8 +82,8 @@ export function OnboardingPage() {
         </Progress>
         <Content>
           <Eyebrow>STEP {inviteReady ? '2' : '1'}</Eyebrow>
-          <Title>{status === 'CONNECTED' ? 'Instagram이 연결됐어요' : inviteReady ? '초대를 수락해주세요' : '테스터 초대를 준비할게요'}</Title>
-          <Description>{status === 'CONNECTED' ? '이제 게시글을 골라 첫 자동 DM을 만들 수 있어요.' : inviteReady
+          <Title>{status === 'CONNECTED' ? '다시 로그인해주세요' : inviteReady ? '초대를 수락해주세요' : '테스터 초대를 준비할게요'}</Title>
+          <Description>{status === 'CONNECTED' ? '연결된 Instagram 계정으로 로그인하면 계속할 수 있어요.' : inviteReady
             ? 'Instagram에서 초대를 한 번 수락하면 공식 연결 화면으로 넘어갈 수 있어요.'
             : '운영자가 Meta 앱에 계정을 초대해야 해요. 초대를 받았다는 안내가 오면 다음 단계로 진행해주세요.'}</Description>
           <Account><span>@</span><div><strong>@{username}</strong><small>연결할 Instagram 계정</small></div></Account>
@@ -98,12 +98,12 @@ export function OnboardingPage() {
               <Info>Instagram 비밀번호와 액세스 토큰은 이 화면에 입력하지 않습니다.</Info>
             </>
           ) : status === 'CONNECTED'
-            ? <Info>연결이 끝났습니다. 자동 DM 설정은 언제든 다시 바꿀 수 있어요.</Info>
+            ? <Info>계정 연결은 완료됐어요. 로그인 상태를 확인하려면 다시 로그인해주세요.</Info>
             : <Info>초대는 운영자가 확인한 뒤 직접 보내요. 이 화면을 닫아도 요청은 유지되며 자동으로 상태를 확인합니다.</Info>}
         </Content>
       </Narrow>
       <BottomBar><div><ButtonStack>{status === 'CONNECTED'
-        ? <PrimaryButton type="button" onClick={() => navigate('/posts/select')}>첫 자동 DM 만들기</PrimaryButton>
+        ? <PrimaryButton type="button" onClick={() => navigate('/login')}>Instagram으로 로그인</PrimaryButton>
         : inviteReady ? <>
         <SecondaryButton type="button" onClick={() => window.open(INVITE_URL, '_blank', 'noopener,noreferrer')}>초대 수락 화면 열기</SecondaryButton>
         <PrimaryButton type="button" onClick={() => window.location.assign(`/oauth/instagram/start?request=${encodeURIComponent(requestId)}`)}>수락했어요 · 연결하기</PrimaryButton>

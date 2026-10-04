@@ -15,6 +15,10 @@ export const joinRequestSchema = z.object({
 
 export type JoinRequest = z.infer<typeof joinRequestSchema>;
 
+// Matches /api/auth/me. OAuth credentials never cross this boundary.
+export type SessionUser = { id: string; email: string | null; status: 'PENDING' | 'ACTIVE'; createdAt: string };
+export type SessionResponse = { user: SessionUser };
+
 export type OnboardingStatus = 'REQUESTED' | 'INVITED' | 'AUTHORIZING' | 'CONNECTED' | 'ERROR';
 
 export type OnboardingRequestView = {

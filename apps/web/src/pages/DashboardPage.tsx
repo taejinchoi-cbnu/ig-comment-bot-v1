@@ -1,5 +1,8 @@
 import styled from '@emotion/styled';
-import { Card, Narrow, PrimaryButton, Screen } from '../components/ui';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { logout } from '../api/session';
+import { Card, ErrorText, Narrow, PrimaryButton, Screen, SecondaryButton } from '../components/ui';
 
 const Header = styled.header`
   margin: 0 -18px 26px;
@@ -11,5 +14,11 @@ const Header = styled.header`
 const Empty = styled(Card)`padding: 34px 24px; text-align: center; h2 { margin: 14px 0 8px; } p { margin: 0 0 24px; color: ${({ theme }) => theme.colors.muted}; line-height: 1.6; }`;
 
 export function DashboardPage() {
-  return <Screen><Header><h1>댓글 자동 DM</h1></Header><Narrow><Empty><span aria-hidden="true">✦</span><h2>첫 자동 DM을 만들어보세요</h2><p>게시글을 고르고 보낼 메시지만 적으면 준비가 끝나요.</p><PrimaryButton type="button">자동 DM 추가</PrimaryButton></Empty></Narrow></Screen>;
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const signOut = useMutation({
+    mutationFn: () => logout(client, localStorage),
+    onSuccess: () => navigate('/login', { replace: true }),
+  });
+  return <Screen><Header><h1>댓글 자동 DM</h1></Header><Narrow><Empty><span aria-hidden="true">✦</span><h2>첫 자동 DM을 만들어보세요</h2><p>게시글을 고르고 보낼 메시지만 적으면 준비가 끝나요.</p><PrimaryButton type="button">자동 DM 추가</PrimaryButton></Empty><SecondaryButton style={{ marginTop: 24 }} disabled={signOut.isPending} onClick={() => signOut.mutate()}>{signOut.isPending ? '로그아웃 중…' : '로그아웃'}</SecondaryButton>{signOut.error && <ErrorText role="alert">로그아웃하지 못했어요. 다시 시도해주세요.</ErrorText>}</Narrow></Screen>;
 }

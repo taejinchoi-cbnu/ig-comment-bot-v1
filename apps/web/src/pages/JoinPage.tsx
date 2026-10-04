@@ -2,7 +2,7 @@ import styled from '@emotion/styled';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { joinRequestSchema, type JoinRequest } from '@ig/shared';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { createOnboardingRequest } from '../api/onboarding';
 import { BottomBar, Card, ErrorText, Field, Label, Narrow, PrimaryButton, Screen } from '../components/ui';
@@ -127,6 +127,7 @@ export function JoinPage() {
             {createRequest.error && <ErrorText role="alert">{createRequest.error.message}</ErrorText>}
           </form>
           <Note><span aria-hidden="true">✓</span><div><strong>토큰이나 비밀번호는 받지 않아요</strong>초대를 수락한 뒤 Instagram 공식 화면에서 직접 연결합니다.</div></Note>
+          <p>이미 연결하셨나요? <Link to="/login">Instagram으로 로그인</Link></p>
         </FormCard>
       </Narrow>
       <BottomBar><div><PrimaryButton type="submit" form="join-form" disabled={createRequest.isPending}>{createRequest.isPending ? '요청 보내는 중…' : '가입 요청하기'}</PrimaryButton></div></BottomBar>

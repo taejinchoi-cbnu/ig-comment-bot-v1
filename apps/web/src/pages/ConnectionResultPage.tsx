@@ -1,4 +1,7 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { sessionOptions } from '../api/session';
+import { SessionStatus } from '../components/SessionGate';
 import { PageHeader } from '../components/PageHeader';
 import { Card, Narrow, PrimaryButton, Screen } from '../components/ui';
 
@@ -16,17 +19,22 @@ const errors: Record<string, { title: string; action: string }> = {
 export function ConnectionResultPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const connected = params.get('status') === 'connected';
+  const session = useQuery(sessionOptions);
+  if (session.isPending || session.isFetching) return <SessionStatus />;
+  if (session.isError) return <SessionStatus error={session.error} retry={() => void session.refetch()} />;
+  const connected = Boolean(session.data);
+  const missingSession = !connected && params.get('status') === 'connected';
   const error = errors[params.get('error') ?? ''] ?? errors.token_exchange_failed!;
   return <Screen>
     <PageHeader title="Instagram 연결 결과" />
     <Narrow>
       <Card style={{ padding: 28, marginTop: 24 }}>
-        <h1>{connected ? 'Instagram이 연결됐어요' : error.title}</h1>
-        <p>{connected ? '이제 게시글을 골라 첫 자동 DM을 만들 수 있어요.' : error.action}</p>
-        <PrimaryButton type="button" onClick={() => navigate(connected ? '/posts/select' : '/onboarding')}>
-          {connected ? '첫 자동 DM 만들기' : '연결 다시 시도하기'}
+        <h1>{connected ? 'Instagram이 연결됐어요' : missingSession ? '로그인이 필요해요' : error.title}</h1>
+        <p>{connected ? '이제 게시글을 골라 첫 자동 DM을 만들 수 있어요.' : missingSession ? '연결된 Instagram 계정으로 다시 로그인해주세요.' : error.action}</p>
+        <PrimaryButton type="button" onClick={() => navigate(connected ? '/posts/select' : missingSession ? '/login' : '/onboarding')}>
+          {connected ? '첫 자동 DM 만들기' : missingSession ? 'Instagram으로 로그인' : '연결 다시 시도하기'}
         </PrimaryButton>
+        {!connected && <p><Link to="/login">로그인 다시 시작하기</Link> · <Link to="/join">가입 요청하기</Link></p>}
       </Card>
     </Narrow>
   </Screen>;

@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
-    "test": "node --test"
+    "test": "node --test --test-isolation=none tests/*.test.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
