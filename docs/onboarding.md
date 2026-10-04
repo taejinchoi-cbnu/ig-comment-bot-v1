@@ -7,7 +7,7 @@
 | `REQUESTED` | 가입 요청을 받았어요 | 운영자가 테스터 초대 |
 | `INVITED` | Instagram에서 초대를 수락해주세요 | 외부 초대 관리 화면 열기 |
 | `AUTHORIZING` | Instagram 연결 중 | OAuth callback 기다림 |
-| `CONNECTED` | 연결됐어요 | 자동 DM 만들기 |
+| `CONNECTED` | 세션 확인 후 연결 완료, 세션 없으면 로그인 안내 | 로그인 후 자동 DM 만들기 |
 | `ERROR` | 사람이 이해할 수 있는 원인 | 해당 단계 다시 시도 |
 
 `REQUESTED`와 `INVITED`는 서비스 온보딩 상태로 추가한다. Instagram 계정의 `DRAFT`,
@@ -70,5 +70,40 @@ Instagram Professional 계정을 Instagram Tester로 초대하고 사용자가 I
 서버는 OAuth, `/me` 계정 확인, 계정별 구독과 재조회까지 완료한 뒤에만 연결 완료 화면과
 세션을 발급한다. 댓글·DM 실동작 검증에는 별도 Instagram 계정이 필요하다.
 
-`pnpm -F api migrate`로 두 신규 마이그레이션을 적용한 뒤 API를 실행한다. 로컬 환경의
+운영자가 검토한 마이그레이션을 `prisma migrate deploy`로 적용한 뒤 API를 실행한다. 로컬 환경의
 `PUBLIC_ORIGIN`과 브라우저의 출처가 다르면 쿠키를 사용한 변경 요청은 403이 된다.
+
+
+## 기존 사용자 로그인과 세션
+
+`/login`의 “Instagram으로 로그인”은 `/oauth/instagram/login`에서 시작한다. 가입 요청과
+테스터 초대는 최초 연결 때만 필요하다. 재로그인은 `/me`로 확인한 Instagram ID의 기존
+`CONNECTED` 계정과 `ACTIVE` 소유자만 허용하며 사용자·계정·가입 요청을 생성하지 않는다.
+계정의 소유자, ID, slug와 verify token을 유지하고, 댓글·메시지 구독을 되읽어 확인한 뒤
+장기 토큰을 암호화 갱신한다. OAuth state는 연결/로그인 목적을 구분하고 두 흐름 모두
+브라우저 결합, 10분 만료, 단일 소비를 적용한다.
+
+브라우저는 토큰을 보관하지 않고 7일 `HttpOnly; Secure; SameSite=Lax` 쿠키를 사용한다.
+`/api/auth/me`로 새로고침·화면 진입·창 복귀 때 세션을 확인한다. 401은 비로그인으로,
+네트워크·서버 오류는 재시도 화면으로 처리한다. `/dashboard`, `/posts/select`는 인증 후에만
+표시하고 연결 결과의 URL만으로 성공을 판단하지 않는다. 운영자 Bearer 인증은 유지한다.
+
+로그아웃은 동일 출처의 `POST /api/auth/logout`이 성공한 뒤 진행 중인 쿼리를 취소하고
+사용자 캐시와 로컬 가입 요청 ID를 지운다. 실패하면 현재 상태와 재시도 버튼을 유지한다.
+쿠키 삭제는 현재 브라우저에만 적용한다. 서버 세션 저장소나 전체 기기 로그아웃은 없다.
+
+### 이번 변경 적용·검증
+
+`20261004010000_oauth_login`은 기존 state를 `CONNECT`로 유지하고 `LOGIN`의 requestId를
+NULL로 제한한다. 클라이언트 생성은 `pnpm -F @ig/api generate`로 수행하며, 실제 DB 적용과
+AWS 배포는 별도 운영 작업이다.
+
+HTTPS 터널과 Meta redirect URI를 준비한 뒤 다음을 확인한다.
+
+- 기존 계정 로그인 → 새로고침 → `/dashboard`, `/posts/select` 직접 접근
+- 로그아웃 → 보호 경로에서 로그인 화면 → 재로그인
+- 쿠키가 없는 별도 브라우저에서 기존 계정 로그인
+- 세션 쿠키 삭제/만료 후 창 복귀와 보호 경로 접근
+- 쿠키 없이 `/connection-result?status=connected` 접근 시 로그인 안내
+- 미연결 계정·비활성 사용자·필드 구독 누락 시 세션 미발급
+- 최초 가입 요청·초대·연결 흐름과 운영자 Bearer 인증 유지
