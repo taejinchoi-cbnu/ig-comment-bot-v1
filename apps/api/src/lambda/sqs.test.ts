@@ -1,11 +1,11 @@
-import { test, mock } from 'node:test';
+import { test, jest } from '@jest/globals';
 import assert from 'node:assert/strict';
 import type { SQSEvent } from 'aws-lambda';
 import { handler } from './sqs.ts';
 
 test('malformed and old SQS records fail individually without logging raw content', async () => {
   const logs: unknown[][] = [];
-  const logger = mock.method(console, 'error', (...args: unknown[]) => logs.push(args));
+  const logger = jest.spyOn(console, 'error').mockImplementation((...args: unknown[]) => logs.push(args));
   try {
     const event = { Records: [
       { messageId: 'malformed', body: 'PRIVATE_BODY invalid json' },
@@ -17,5 +17,5 @@ test('malformed and old SQS records fail individually without logging raw conten
     ] });
     assert.ok(!JSON.stringify(logs).includes('PRIVATE_BODY'));
     assert.equal(logs.length, 3);
-  } finally { logger.mock.restore(); }
+  } finally { logger.mockRestore(); }
 });

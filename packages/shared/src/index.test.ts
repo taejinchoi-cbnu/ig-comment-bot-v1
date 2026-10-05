@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { instagramUsernameSchema } from './index.ts';
 
 test('선행 @는 30자 Instagram 아이디 길이에 포함하지 않는다', () => {

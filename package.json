@@ -10,10 +10,11 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "build": "pnpm -r build",
-    "verify": "pnpm typecheck && pnpm test && pnpm build",
+    "verify": "pnpm typecheck && pnpm test:coverage && pnpm build",
     "connect-account": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/connect-account.ts",
     "onboarding": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/onboarding-requests.ts",
-    "verify:public": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-public.ts"
+    "verify:public": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-public.ts",
+    "test:coverage": "pnpm -r test:coverage"
   },
   "pnpm": {
     "overrides": {

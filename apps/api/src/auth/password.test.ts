@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import { hashPassword, verifyPassword } from './password.ts';
 
 test('Argon2id 해시는 salt를 포함하고 같은 비밀번호도 서로 다르게 저장한다', async () => {

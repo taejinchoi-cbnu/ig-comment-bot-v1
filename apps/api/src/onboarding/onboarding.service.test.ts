@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { OnboardingRequest } from '../generated/prisma/client.ts';
 import { OnboardingService, type OnboardingPrisma } from './onboarding.service.ts';

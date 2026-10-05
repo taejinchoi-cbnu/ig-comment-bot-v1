@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import assert from 'node:assert/strict';
 import { resolveAccountBySlug, type AccountLookup } from './account.service.ts';
 import { encrypt, generateKey } from '../crypto/cipher.ts';

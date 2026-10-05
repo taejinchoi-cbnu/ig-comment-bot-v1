@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import assert from 'node:assert/strict';
 import { handleReceive, handleVerification, type WebhookDeps } from './webhook.service.ts';
 import { encrypt, generateKey } from '../crypto/cipher.ts';

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import type { PrismaClient } from '../generated/prisma/client.ts';
 import { decrypt, generateKey } from '../crypto/cipher.ts';
 import { connectInstagram } from './connect.ts';

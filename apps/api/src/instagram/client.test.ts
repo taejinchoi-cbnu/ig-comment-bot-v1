@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import assert from 'node:assert/strict';
 import { InstagramApiClient } from './client.ts';
 import { InstagramApiError } from './errors.ts';
@@ -267,6 +267,7 @@ test('getMe 응답에 user_id 가 없으면 실패로 본다 — 빈 값으로 �
   await assert.rejects(() => client.getMe());
 });
 
+// Response.json() creates arrays in Node's realm; spread into the Jest test realm.
 test('getSubscribedFields: 여러 구독 항목의 필드를 평평하게 모은다', async () => {
   const client = new InstagramApiClient({
     igUserId: 'ig-1',
@@ -274,7 +275,7 @@ test('getSubscribedFields: 여러 구독 항목의 필드를 평평하게 모은
     fetchImpl: async () =>
       new Response(JSON.stringify({ data: [{ subscribed_fields: ['comments', 'messages'] }] }), { status: 200 }),
   });
-  assert.deepEqual(await client.getSubscribedFields(), ['comments', 'messages']);
+  assert.deepEqual([...await client.getSubscribedFields()], ['comments', 'messages']);
 });
 
 // 이게 이 메서드가 존재하는 이유다. Meta 는 앱 레벨에서 구독하지 않은 필드를 조용히
@@ -286,7 +287,7 @@ test('getSubscribedFields: 일부만 걸린 상태를 그대로 드러낸다', a
     fetchImpl: async () =>
       new Response(JSON.stringify({ data: [{ subscribed_fields: ['messages'] }] }), { status: 200 }),
   });
-  assert.deepEqual(await client.getSubscribedFields(), ['messages']);
+  assert.deepEqual([...await client.getSubscribedFields()], ['messages']);
 });
 
 test('getSubscribedFields: data 가 비면 빈 배열', async () => {
@@ -295,7 +296,7 @@ test('getSubscribedFields: data 가 비면 빈 배열', async () => {
     accessToken: 'tok',
     fetchImpl: async () => new Response(JSON.stringify({ data: [] }), { status: 200 }),
   });
-  assert.deepEqual(await client.getSubscribedFields(), []);
+  assert.deepEqual([...await client.getSubscribedFields()], []);
 });
 
 test('getSubscribedFields: 공용 앱의 필드만 확인한다', async () => {
@@ -306,7 +307,7 @@ test('getSubscribedFields: 공용 앱의 필드만 확인한다', async () => {
       { id: 'ours', subscribed_fields: ['messages'] },
     ] }), { status: 200 }),
   });
-  assert.deepEqual(await client.getSubscribedFields('ours'), ['messages']);
+  assert.deepEqual([...await client.getSubscribedFields('ours')], ['messages']);
 });
 
 // ── 공개 대댓글 ───────────────────────────────────────────────────

@@ -10,18 +10,17 @@
  *
  * 파일명이 .dbtest.ts 인 이유: package.json 의 "test" 스크립트는 src/**\/*.test.ts 만
  * 돈다. 이 파일은 실 DB 연결이 필요해 CI 기본 파이프라인에서 제외돼야 하므로
- * 그 글롭에 안 걸리는 이름을 쓴다. 실행: `node --test "src/prisma/*.dbtest.ts"`.
+ * 그 글롭에 안 걸리는 이름을 쓴다. 실행: `pnpm -F @ig/api test:db`.
  *
- * 데코레이터를 쓰지 않는다 (node --test 대상).
+ * TEST_DATABASE_URL을 명시한 별도 테스트 DB만 사용한다.
  */
-import { test, before, after } from 'node:test';
+import { test, beforeAll, afterAll } from '@jest/globals';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { getPrisma } from './client.ts';
-import type { PrismaClient } from '../generated/prisma/client.ts';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../generated/prisma/client.ts';
 
-// client.ts 는 연결 문자열을 Secrets Manager 에서 가져올 수 있어 생성이 비동기입니다.
-// before 훅에서 한 번 받아 이 변수로 씁니다.
+// 테스트 전용 연결 문자열로 beforeAll에서 클라이언트를 만든다.
 let prisma: PrismaClient;
 
 // 이 테스트 실행 전체에서 고유한 접두사. 기존 데이터와 절대 겹치지 않는다.
@@ -30,8 +29,10 @@ const RUN_ID = `dbtest_${randomUUID()}`;
 let userId: string;
 let igAccountId: string;
 
-before(async () => {
-  prisma = await getPrisma();
+beforeAll(async () => {
+  const connectionString = process.env.TEST_DATABASE_URL;
+  if (!connectionString) throw new Error('TEST_DATABASE_URL is required; no operator configuration is loaded');
+  prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   const user = await prisma.user.create({
     data: {
       email: `${RUN_ID}@example.com`,
@@ -54,9 +55,14 @@ before(async () => {
 });
 
 // User 를 지우면 IgAccount → SentReply/Conversation 이 Cascade 로 전부 따라 지워진다
-// (schema.prisma 의 onDelete: Cascade). 테스트가 실패해도 항상 실행되도록 after 에 둔다.
-after(async () => {
-  await prisma.user.delete({ where: { id: userId } });
+// (schema.prisma 의 onDelete: Cascade). 테스트가 실패해도 항상 실행되도록 afterAll에 둔다.
+afterAll(async () => {
+  if (!prisma) return;
+  try {
+    if (userId) await prisma.user.delete({ where: { id: userId } });
+  } finally {
+    await prisma.$disconnect();
+  }
 });
 
 // ── SentReply: 댓글 멱등성 ──────────────────────────────────────────

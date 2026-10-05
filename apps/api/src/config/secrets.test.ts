@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import type { SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { loadSecrets, resetSecretsCache } from './secrets.ts';
 

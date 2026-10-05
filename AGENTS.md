@@ -61,7 +61,10 @@ Full list with details in `docs/meta-api.md`. The ones that bite most:
 ```bash
 pnpm install
 pnpm typecheck        # tsc --noEmit
-pnpm test             # node --test (Node 24 type stripping, no test framework)
+pnpm test             # Jest (API), Vitest (web/shared), no external services
+pnpm test:coverage    # V8 reports in each package coverage/; no minimum threshold
+pnpm verify           # typecheck → coverage tests → build
+pnpm -F @ig/api test:db # requires explicit TEST_DATABASE_URL; separate test DB only
 pnpm -F api dev
 pnpm -F web dev
 scripts/deploy.sh     # SAM CLI is NOT installed; deploy via aws cloudformation
@@ -72,7 +75,9 @@ scripts/deploy.sh     # SAM CLI is NOT installed; deploy via aws cloudformation
 - Commit anything under `ops/` (gitignored — operator config, customer working files)
 - Accept secrets as CLI arguments (shell history). Use stdin or a file
 - Add `@ts-nocheck`, or silence type errors instead of fixing them
-- Install a test framework, a chart library, or a queue library — see the docs for why
+- Install another test framework, a chart library, or a queue library — use Jest for API and Vitest for web/shared
+- Read operator environment files or contact production services from default tests
+- Run DB tests without an explicit TEST_DATABASE_URL for a separate test database
 - Install the SAM CLI. `aws cloudformation deploy --capabilities CAPABILITY_AUTO_EXPAND`
   expands the SAM transform server-side
 - Create per-customer IAM users. Customers never call AWS; usage is counted in the `Event` table

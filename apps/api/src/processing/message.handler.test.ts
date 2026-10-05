@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import assert from 'node:assert/strict';
 import { handleMessage } from './message.handler.ts';
 import { InstagramApiError } from '../instagram/errors.ts';
@@ -343,7 +343,10 @@ test('예상 밖 예외도 롤백하고 throw 한다 — comment 핸들러와 �
     },
   });
 
-  await assert.rejects(() => handleMessage(buildEvent(), ctx), bug);
+  await assert.rejects(() => handleMessage(buildEvent(), ctx), (cause: unknown) => {
+    assert.equal(cause, bug);
+    return true;
+  });
 
   assert.ok(calls.includes('rollback'), `롤백이 호출되어야 한다. 실제: ${calls.join(' → ')}`);
   assert.equal(getConversation()?.state, 'WAITING_USER_MESSAGE');

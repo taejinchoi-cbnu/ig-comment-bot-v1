@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import { consumeOAuthState, exchangeCode, startOAuth, startLoginOAuth, type OAuthDb } from './oauth.ts';
 
 const config = { appId: 'app', appSecret: 'secret', origin: 'https://example.test', redirectUri: 'https://example.test/oauth/instagram/callback' };
