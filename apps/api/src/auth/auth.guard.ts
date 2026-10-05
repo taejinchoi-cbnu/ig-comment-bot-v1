@@ -1,4 +1,4 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Inject, UnauthorizedException } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import type { PublicUser } from './auth.service.ts';
@@ -26,7 +26,7 @@ export function bearerToken(header: string | undefined): string | null {
 export class AuthGuard implements CanActivate {
   private readonly auth: AuthService;
 
-  constructor(auth: AuthService) {
+  constructor(@Inject(AuthService) auth: AuthService) {
     this.auth = auth;
   }
 
