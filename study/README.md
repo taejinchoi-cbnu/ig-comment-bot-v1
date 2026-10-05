@@ -31,3 +31,4 @@
 | [2026-09-14](./2026-09-14-public-repository-boundary.md) | 공개 전환 — 운영 문서와 공개 README의 책임을 분리하고 식별 가능한 예시를 제거 |
 | [2026-09-20](./2026-09-20-auth-and-onboarding-foundation.md) | Phase 2 기반 — 인증·가입 요청 상태·초대 대기 화면을 OAuth 앞에 먼저 구성 |
 | [2026-09-20](./2026-09-20-oauth-onboarding-before-implementation.md) | OAuth 온보딩 착수 전 — 수동 토큰 입력을 공용 앱·테스터·세션 흐름으로 바꾸기 위한 설계 학습 |
+| [2026-10-05](./2026-10-05-jest-vitest-http-regression.md) | Jest·Vitest 이관 — 실제 Nest HTTP 테스트가 인증 주입 누락 발견, 305개 테스트와 전체 소스 커버리지 검증 |

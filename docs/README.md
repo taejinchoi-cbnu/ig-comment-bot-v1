@@ -88,7 +88,9 @@ Phase 1이 미지의 위험(Meta 함정 · Tester 초대 · `subscribed_apps`)�
 ```bash
 pnpm install
 pnpm typecheck            # tsc --noEmit
-pnpm test                 # node --test
+pnpm test                 # Jest(API) + Vitest(웹·공유)
+pnpm test:coverage        # 전체 src V8 커버리지, 최소 통과율 없음
+pnpm verify               # 타입 검사 → 커버리지 테스트 → 빌드
 pnpm -F api dev           # 로컬 API (HTTP + 인라인 워커)
 pnpm -F web dev           # 로컬 SPA
 scripts/deploy.sh         # 빌드 → CFN package/deploy → S3 sync (SAM CLI 불필요)

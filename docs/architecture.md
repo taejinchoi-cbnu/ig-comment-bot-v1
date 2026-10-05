@@ -420,26 +420,17 @@ export const handlers = {
 
 ## 빌드와 테스트
 
-테스트 프레임워크를 넣지 않는다. Node 24 내장 `node --test` + 타입 스트리핑으로 **컴파일 없이 `.ts`를 직접** 돌린다.
+API는 Jest 30 + ts-jest의 Node/CJS 환경에서 실행한다. NestJS 데코레이터 메타데이터를 보존해 실제 Nest 테스트 앱으로 HTTP 인증도 검증한다. ESM 배포인 `@nestjs/jwt`만 테스트용 JavaScript 변환을 허용한다. 운영 빌드의 TypeScript 설정은 유지하며, 테스트 전용 resolver는 실제 상대 `.js` 파일을 먼저 찾고 없을 때만 `.ts`로 해석한다.
 
-```jsonc
-// tsconfig.base.json — 이 두 줄이 핵심
-"allowImportingTsExtensions": true,     // 테스트가 './trigger.ts' 를 직접 import
-"rewriteRelativeImportExtensions": true // 빌드 시 './trigger.js' 로 자동 재작성
-```
+웹은 Vite React 변환을 재사용하는 Vitest를 쓴다. 세션 서비스는 Node, 화면은 jsdom 환경에서 실행하고, 화면마다 새 QueryClient·MemoryRouter·Emotion ThemeProvider를 제공한다. 공유 패키지도 Vitest의 Node 환경을 쓴다. 기존 `node:assert` 검증은 유지하고 등록·훅·mock은 각 러너의 API를 사용한다.
 
-`rewriteRelativeImportExtensions`(TS 5.7+)가 없으면 둘 중 하나를 포기해야 한다 —
-`.ts` import는 `allowImportingTsExtensions`가 필요한데 그건 원래 emit을 막기 때문이다.
-실측으로 확인한 결과 `nest build` 산출물에 `require("./trigger.js")`로 정확히 나온다.
+- `pnpm test`: 전체 테스트를 한 번 실행하고 종료한다. 기본 테스트는 운영 환경 파일과 실제 외부 서비스를 사용하지 않는다.
+- 패키지별 `test:watch`: 수정하면서 반복 실행한다.
+- `pnpm test:coverage`: 패키지별 전체 `src`를 V8로 측정한다. 테스트·지원 코드·타입 선언·Prisma 생성 코드는 제외한다. 최소 통과율 없이 터미널과 HTML·LCOV·JSON 요약으로 결과를 제공한다.
+- `pnpm verify`: 타입 검사 → 커버리지 포함 테스트 → 전체 빌드. Lambda 번들은 `pnpm -F @ig/api build:lambda`로 별도 검증한다.
+- `pnpm -F @ig/api test:db`: 명시적인 `TEST_DATABASE_URL`로 별도 테스트 DB에서만 멱등성을 검증한다. 데이터 삭제와 연결 종료는 `afterAll`에서 보장한다.
 
-**순수 함수에는 데코레이터를 쓰지 않는다.** 타입 스트리핑은 타입만 지우고
-데코레이터·파라미터 프로퍼티는 변환하지 못한다. `normalize` `signature` `trigger` 같은
-테스트 핵심 모듈이 NestJS 데코레이터를 물면 그 순간 `node --test`가 깨진다.
-
-- 테스트는 `tsconfig.build.json`에서 제외되어 빌드 산출물에 섞이지 않는다
-- 경고 두 개(`ExperimentalWarning`, `MODULE_TYPELESS_PACKAGE_JSON`)는 원인을 알고
-  `--disable-warning`으로 억제한다. 테스트는 ESM, 빌드 산출물은 CJS라
-  `package.json`에 `type`을 박을 수 없다 (`"commonjs"`로 두면 Node가 ESM 문법을 거부)
+테스트와 설정 파일도 타입 검사하며 API 테스트는 `tsconfig.build.json`에서 제외한다. 테스트 도구 선택과 정책은 [`adr/0004-test-runners-and-coverage.md`](./adr/0004-test-runners-and-coverage.md)를 따른다.
 
 ---
 

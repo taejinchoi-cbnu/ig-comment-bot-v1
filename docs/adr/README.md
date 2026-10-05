@@ -8,3 +8,4 @@
 | [0001](./0001-serverless-web-hosting.md) | S3 + CloudFront + Lambda, EC2 없음 | Accepted |
 | [0002](./0002-frontend-stack.md) | React/Vite/Emotion + TanStack Query, REST | Accepted |
 | [0003](./0003-instagram-oauth-onboarding.md) | 공용 Meta 앱의 테스터 + Instagram OAuth 온보딩 | Accepted |
+| [0004](./0004-test-runners-and-coverage.md) | API Jest, 웹·공유 Vitest와 측정 전용 V8 커버리지 | Accepted |

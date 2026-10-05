@@ -67,7 +67,7 @@
 - [x] **모든 분기에서 `Event` 기록** (`COMMENT_SKIPPED` + `skipReason` 포함) ← Phase 3의 원천이라 지금 빠뜨리면 안 된다
 - [x] `lambda/http.ts`, `lambda/sqs.ts` 어댑터
 
-### 5. 테스트 (`node --test`)
+### 5. 테스트 (Jest)
 - [x] `normalize` 17건 — 셀프 댓글 · is_echo/is_self · sender 동일성 · NO_TEXT · verb=remove · 다중 entry · 쓰레기 입력
 - [x] `signature` 13건 — 2종 각각 통과 · 위조 · base64 · 길이 불일치 예외 없음 · 재직렬화 회귀
 - [x] 문구 3단 폴백 — 캠페인 > 계정 > 기본, 필드 단위 병합
@@ -88,7 +88,7 @@
 
 **7-1. 배포**
 ```bash
-pnpm verify                 # typecheck → test → build
+pnpm verify                 # typecheck → test:coverage → build
 scripts/create-secret.sh    # ops/deploy.env → Secrets Manager (MASTER_KEY 32바이트·pooled URL 검증)
 scripts/deploy.sh           # → Outputs 의 ApiFunctionUrl 확보
 ```
